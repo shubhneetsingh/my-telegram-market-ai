@@ -208,9 +208,13 @@ class MultiAgentOrchestrator:
         """Fast heuristic + model intent router."""
         lower = user_message.lower().strip()
 
-        # 1. Fast Greeting / Help Detection
-        greetings = ["hello", "hi", "hey", "good morning", "good evening", "how are you", "who are you", "what can you do", "help"]
-        if lower in greetings or any(lower.startswith(g + " ") for g in ["hi", "hello", "hey"]):
+        # 1. Fast Conversational / Capability / Greeting Detection
+        capabilities = [
+            "what can you do", "what you can do", "what do you do", "who are you", 
+            "how can you help", "tell me about yourself", "what are your features",
+            "hello", "hi", "hey", "good morning", "good evening", "how are you", "help"
+        ]
+        if any(phrase in lower for phrase in capabilities):
             return "GENERAL_CHAT"
 
         # 2. Fast Command / Keyword Detection
@@ -241,9 +245,9 @@ class MultiAgentOrchestrator:
                 max_tokens=30,
             )
             intent = response.choices[0].message.content.strip().upper()
-            return intent if intent in ["TECHNICAL_ANALYSIS", "TRADE_PLAN", "NEWS_MACRO", "PRICE_CHECK", "RISK_CALC", "GENERAL_CHAT"] else "TECHNICAL_ANALYSIS"
+            return intent if intent in ["TECHNICAL_ANALYSIS", "TRADE_PLAN", "NEWS_MACRO", "PRICE_CHECK", "RISK_CALC", "GENERAL_CHAT"] else "GENERAL_CHAT"
         except Exception:
-            return "TECHNICAL_ANALYSIS"
+            return "GENERAL_CHAT"
 
     async def run_full_pipeline(
         self,
@@ -268,7 +272,9 @@ class MultiAgentOrchestrator:
         # -------------------------------------------------------------
         # BRANCH 1: SIMPLE PRICE CHECK
         # -------------------------------------------------------------
-        if intent == "PRICE_CHECK" and primary_symbol:
+        if intent == "PRICE_CHECK":
+            if not primary_symbol:
+                return "⚠️ Please specify a symbol for price check (e.g. `/price NVDA`, `/price BTC`, `/price GOLD`)."
             data = await get_multi_timeframe_technical_data(primary_symbol)
             if data:
                 return format_ticker_summary(data)
@@ -278,10 +284,14 @@ class MultiAgentOrchestrator:
         # BRANCH 2: NEWS & MACRO FOCUS
         # -------------------------------------------------------------
         if intent == "NEWS_MACRO":
-            search_query = primary_symbol or user_message
+            # Only do DuckDuckGo search if there is an explicit symbol or news query
+            search_query = primary_symbol or user_message.replace("/news", "").strip()
+            if not search_query:
+                return "⚠️ Please specify a topic or asset for news search (e.g. `/news Fed rate decision` or `/news Gold`)."
+
             news_raw = await search_live_market_news(f"{search_query} financial market news today")
             if not news_raw:
-                return f"📰 **Macro & News Intelligence:** No recent breaking news found for `{search_query}`."
+                return f"📰 **Macro & News Intelligence:** No recent breaking headlines found for `{search_query}`."
 
             news_analysis = await self._run_agent(
                 NEWS_AGENT_PROMPT,
@@ -294,7 +304,11 @@ class MultiAgentOrchestrator:
         # BRANCH 3: FULL MULTI-AGENT TRADE PLAN & CRITIC PIPELINE
         # -------------------------------------------------------------
         if primary_symbol or intent in ["TECHNICAL_ANALYSIS", "TRADE_PLAN"]:
-            symbol = primary_symbol or "BTC-USD"
+            if not primary_symbol:
+                # If user asked for analysis without mentioning a symbol
+                return "📊 Which asset would you like me to analyze? (e.g., `/analyze NVDA`, `/analyze BTC`, or ask *\"Should I enter Gold long?\"*)"
+
+            symbol = primary_symbol
             data = await get_multi_timeframe_technical_data(symbol)
 
             # Technical Data Failure Handling

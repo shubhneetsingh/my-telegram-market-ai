@@ -1,6 +1,6 @@
 # 📈 Multi-Agent Telegram AI Market Assistant
 
-A personal, institutional-grade Telegram AI market assistant powered by a **Multi-Agent Orchestrator**, **Deterministic Multi-Timeframe OHLCV Technicals**, and **Open-Source AI Models from NVIDIA NIM** (DeepSeek-R1, Nemotron 70B, Llama 3.3).
+A personal, institutional-grade Telegram AI market assistant powered by a **Multi-Agent Orchestrator**, **Deterministic Multi-Timeframe OHLCV Technicals**, and **Open-Source AI Models from NVIDIA NIM** (DeepSeek-R1, Nemotron, Llama 3.2).
 
 ---
 
@@ -48,45 +48,41 @@ User Question / Trade Setup
 
 ---
 
-## ✨ Key Capabilities
+## 🌐 24/7 Cloud Deployment (Render + UptimeRobot)
 
-1. **Deterministic Technical Engine (`market_data.py`)**:
-   - Computes **Daily (1D) and Hourly (1H) EMAs (20, 50, 200)** for structural trend alignment.
-   - Computes **RSI (14)** for momentum and overextension checks.
-   - Computes **ATR (14)** for volatility-grounded stop loss buffers.
-   - Calculates **20-Period Swing Highs & Lows** for real horizontal support & resistance.
-
-2. **Deterministic Risk & Position Sizing (`risk_engine.py`)**:
-   - Computes exact unit position size based on account balance and risk %.
-   - Calculates exact Risk-to-Reward ratio ($R:R$) and dollar upside/downside.
-   - Warns if the stop-loss is placed too tight relative to ATR ($<0.8\times \text{ATR}$).
-
-3. **Adversarial Critic & Verification Agent (`orchestrator.py`)**:
-   - Actively audits trade ideas to catch trend contradictions, overbought RSI, or high-impact macro conflicts before issuing a verdict: `[APPROVED | CAUTION | INVALIDATED]`.
-
-4. **Multi-Model / Provider Flexibility**:
-   - Plug in **NVIDIA NIM** (`deepseek-ai/deepseek-r1`, `nvidia/llama-3.1-nemotron-70b-instruct`), **Groq**, **OpenRouter**, **DeepSeek**, or local **Ollama** simply by editing `.env`.
-
----
-
-## 🚀 Quick Setup
-
-### Step 1: Add Credentials to [`.env`](file:///c:/Users/shubh/Downloads/Telegram%20Bot/.env)
-
-```env
-TELEGRAM_TOKEN=your_token_from_botfather
-
-AI_PROVIDER=nvidia
-AI_MODEL=nvidia/llama-3.1-nemotron-70b-instruct
-
-NVIDIA_API_KEY=nvapi-your_nvidia_api_key_here
-```
-
-### Step 2: Start the Bot
-
+### Step 1: Push to GitHub
+Create a new private or public repository on [github.com](https://github.com/new), then run in this folder:
 ```bash
-python bot.py
+git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
+git branch -M main
+git push -u origin main
 ```
+
+### Step 2: Deploy on Render
+1. Go to **[dashboard.render.com](https://dashboard.render.com)** and click **New +** ➔ **Web Service**.
+2. Connect your GitHub repository.
+3. Settings:
+   - **Environment**: `Python`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `python main.py`
+   - **Plan**: `Free`
+4. Add **Environment Variables** under the "Environment" tab:
+   - `TELEGRAM_TOKEN` = `your_bot_token`
+   - `NVIDIA_API_KEY` = `nvapi-your_key`
+   - `AI_PROVIDER` = `nvidia`
+   - `AI_MODEL` = `meta/llama-3.2-11b-vision-instruct`
+5. Click **Create Web Service**.
+
+### Step 3: Keep-Alive with UptimeRobot (24/7 Free)
+1. Go to **[uptimerobot.com](https://uptimerobot.com)** (free account).
+2. Click **Add New Monitor**:
+   - **Monitor Type**: `HTTP(s)`
+   - **Friendly Name**: `My Telegram Market AI`
+   - **URL (or IP)**: `https://your-bot-name.onrender.com/health`
+   - **Monitoring Interval**: `5 minutes`
+3. Click **Create Monitor**.
+
+*UptimeRobot will ping your server every 5 minutes, preventing Render from sleeping and keeping your Telegram bot 100% online 24/7 without needing your PC on!*
 
 ---
 
