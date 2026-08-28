@@ -94,10 +94,12 @@ async def model_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Resets conversational memory."""
+    """Resets conversational memory in SQLite."""
+    user_id = str(update.effective_user.id)
+    clear_user_history(user_id)
     context.user_data["chat_history"] = []
     await update.message.reply_text(
-        "🧹 **Conversation memory cleared.** Pipeline reset!",
+        "🧹 **Conversation memory cleared.** Let's start fresh!",
         parse_mode=ParseMode.MARKDOWN,
     )
 
@@ -200,30 +202,44 @@ async def news_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(reply)
 
 
+from memory import (
+    save_chat_message,
+    get_recent_chat_history,
+    update_user_profile,
+    get_user_profile,
+    clear_user_history,
+)
+
+
 # ---------------------------------------------------------
 # CONVERSATIONAL CHAT HANDLER (MULTI-AGENT PIPELINE)
 # ---------------------------------------------------------
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Routes conversational questions through the Multi-Agent Orchestrator."""
+    """Routes conversational questions through the Multi-Agent Orchestrator with Persistent Memory."""
     user_message = update.message.text
     if not user_message:
         return
 
-    if "chat_history" not in context.user_data:
-        context.user_data["chat_history"] = []
+    user_id = str(update.effective_user.id)
+    username = update.effective_user.username or ""
+    first_name = update.effective_user.first_name or ""
+
+    # Update profile display name & username
+    update_user_profile(user_id, display_name=first_name, username=username)
+
+    # Fetch persistent chat history from SQLite
+    chat_history = get_recent_chat_history(user_id, limit=MAX_MEMORY_TURNS)
+
+    # Save user message to persistent DB
+    save_chat_message(user_id, "user", user_message)
 
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
 
-    # Append to rolling history
-    context.user_data["chat_history"].append({"role": "user", "content": user_message})
-    if len(context.user_data["chat_history"]) > MAX_MEMORY_TURNS:
-        context.user_data["chat_history"] = context.user_data["chat_history"][-MAX_MEMORY_TURNS:]
-
     # Run through Multi-Agent Orchestrator
-    reply = await orchestrator.run_full_pipeline(user_message, context.user_data["chat_history"])
+    reply = await orchestrator.run_full_pipeline(user_message, chat_history)
 
-    # Append response to memory
-    context.user_data["chat_history"].append({"role": "assistant", "content": reply})
+    # Save assistant response to persistent DB
+    save_chat_message(user_id, "assistant", reply)
 
     # Send response
     try:

@@ -429,6 +429,21 @@ class MultiAgentOrchestrator:
         # -------------------------------------------------------------
         # BRANCH 4: GENERAL CHAT & CONCEPTUAL DISCUSSION
         # -------------------------------------------------------------
+        lower_msg = user_message.lower().strip()
+        if any(phrase in lower_msg for phrase in ["what can you do", "what you can do", "what do you do", "what are your features", "capabilities", "what are your commands"]):
+            return (
+                "⚡ **Here is what I do for your trading:**\n\n"
+                "• 📊 **Multi-Timeframe Analysis** (`/analyze <symbol>`)\n"
+                "  ➔ Live 1D & 1H OHLCV data, EMAs (20/50/200), RSI & key swings.\n\n"
+                "• 🛡️ **Adversarial Trade Critic**\n"
+                "  ➔ Audits your trade ideas for overextension & trend contradictions.\n\n"
+                "• 🎯 **Deterministic Risk Math** (`/risk <entry> <stop> <target>`)\n"
+                "  ➔ Exact position sizes, dollar risk, and R:R ratios.\n\n"
+                "• 📰 **Live Macro & News** (`/news <topic>`)\n"
+                "  ➔ Instant catalyst extraction for Fed, CPI, earnings & global markets.\n\n"
+                "💡 *Drop any ticker (e.g. `/analyze GOLD` or `What's the trend on BTC?`) and let's break it down!*"
+            )
+
         return await self.ai.generate_response(chat_history)
 
     async def _run_agent(self, system_prompt: str, user_content: str, role: str = "synthesizer") -> str:
