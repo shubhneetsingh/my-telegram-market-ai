@@ -35,6 +35,10 @@ try:
 except ValueError:
     MAX_MEMORY_TURNS = 16
 
+# Admin Security Settings (Comma-separated Telegram User IDs or Usernames)
+ADMIN_USER_IDS = [x.strip() for x in os.getenv("ADMIN_USER_IDS", "").split(",") if x.strip()]
+ADMIN_USERNAMES = [x.strip().lstrip("@").lower() for x in os.getenv("ADMIN_USERNAMES", "").split(",") if x.strip()]
+
 
 def get_ai_client_config():
     """

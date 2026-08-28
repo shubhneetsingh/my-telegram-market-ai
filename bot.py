@@ -20,6 +20,8 @@ from config import (
     AI_PROVIDER,
     AI_MODEL,
     MAX_MEMORY_TURNS,
+    ADMIN_USER_IDS,
+    ADMIN_USERNAMES,
 )
 from orchestrator import orchestrator
 from market_data import (
@@ -99,7 +101,20 @@ async def model_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles the /stats command — displays real-time user metrics."""
+    """Handles the /stats command — displays real-time user metrics (Admin Only)."""
+    user_id = str(update.effective_user.id)
+    username = (update.effective_user.username or "").lower().lstrip("@")
+
+    # If admins are configured in .env, restrict access to admins only
+    if ADMIN_USER_IDS or ADMIN_USERNAMES:
+        is_admin = (user_id in ADMIN_USER_IDS) or (username in ADMIN_USERNAMES)
+        if not is_admin:
+            await update.message.reply_text(
+                "🔒 **Access Restricted**: Analytics and user data are reserved for the bot administrator.",
+                parse_mode=ParseMode.MARKDOWN,
+            )
+            return
+
     analytics = get_system_analytics()
     total_users = analytics["total_users"]
     total_messages = analytics["total_messages"]
