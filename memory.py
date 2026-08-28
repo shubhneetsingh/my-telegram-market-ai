@@ -187,3 +187,50 @@ def build_personalized_system_context(user_id: str) -> str:
     if notes:
         context_str += f"\n- Trader Notes: {notes}"
     return context_str
+
+
+# ----------------------------------------------------------------------
+# SYSTEM ANALYTICS & USER TRACKING
+# ----------------------------------------------------------------------
+def get_system_analytics() -> Dict[str, Any]:
+    """Fetches real-time user count, message volume, and active user list."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Total users
+    cursor.execute("SELECT COUNT(*) FROM user_profiles")
+    total_users = cursor.fetchone()[0]
+
+    # Total messages
+    cursor.execute("SELECT COUNT(*) FROM chat_messages")
+    total_messages = cursor.fetchone()[0]
+
+    # Active users in last 24h
+    cursor.execute("""
+        SELECT COUNT(DISTINCT user_id) FROM chat_messages 
+        WHERE timestamp >= datetime('now', '-1 day')
+    """)
+    active_24h = cursor.fetchone()[0]
+
+    # List of recent users with message counts
+    cursor.execute("""
+        SELECT 
+            p.user_id,
+            p.display_name,
+            p.username,
+            p.updated_at,
+            (SELECT COUNT(*) FROM chat_messages m WHERE m.user_id = p.user_id) as msg_count
+        FROM user_profiles p
+        ORDER BY p.updated_at DESC
+        LIMIT 25
+    """)
+    recent_users = [dict(row) for row in cursor.fetchall()]
+
+    conn.close()
+
+    return {
+        "total_users": total_users,
+        "total_messages": total_messages,
+        "active_24h": active_24h,
+        "recent_users": recent_users,
+    }

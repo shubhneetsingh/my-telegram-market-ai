@@ -98,6 +98,35 @@ async def model_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(status_text, parse_mode=ParseMode.MARKDOWN)
 
 
+async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handles the /stats command — displays real-time user metrics."""
+    analytics = get_system_analytics()
+    total_users = analytics["total_users"]
+    total_messages = analytics["total_messages"]
+    active_24h = analytics["active_24h"]
+    recent_users = analytics["recent_users"]
+
+    user_lines = []
+    for i, u in enumerate(recent_users[:10], 1):
+        name = u["display_name"] or "Trader"
+        uname = f"(@{u['username']})" if u["username"] else ""
+        msgs = u["msg_count"]
+        user_lines.append(f"{i}. **{name}** {uname} — `{msgs} msgs`")
+
+    users_str = "\n".join(user_lines) if user_lines else "_No user records yet._"
+
+    report = (
+        "📊 **Trade with Bebo — Live User Analytics**\n\n"
+        f"👥 **Total Registered Users**: `{total_users}`\n"
+        f"💬 **Total Messages Processed**: `{total_messages}`\n"
+        f"⚡ **Active Traders (Last 24H)**: `{active_24h}`\n\n"
+        "**Recent Active Users:**\n"
+        f"{users_str}\n\n"
+        "🌐 _Live Web Dashboard also accessible on your Render URL at `/stats`_"
+    )
+    await update.message.reply_text(report, parse_mode=ParseMode.MARKDOWN)
+
+
 async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Resets conversational memory in SQLite."""
     user_id = str(update.effective_user.id)
@@ -213,6 +242,7 @@ from memory import (
     update_user_profile,
     get_user_profile,
     clear_user_history,
+    get_system_analytics,
 )
 
 
@@ -282,6 +312,8 @@ def main():
     app.add_handler(CommandHandler("risk", risk_command))
     app.add_handler(CommandHandler("news", news_command))
     app.add_handler(CommandHandler("model", model_command))
+    app.add_handler(CommandHandler("stats", stats_command))
+    app.add_handler(CommandHandler("users", stats_command))
     app.add_handler(CommandHandler("clear", clear_command))
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
 
