@@ -23,6 +23,15 @@ from config import (
     ADMIN_USER_IDS,
     ADMIN_USERNAMES,
 )
+from memory import (
+    save_chat_message,
+    get_recent_chat_history,
+    update_user_profile,
+    get_user_profile,
+    clear_user_history,
+    get_system_analytics,
+    record_activity,
+)
 from orchestrator import orchestrator
 from market_data import (
     get_multi_timeframe_technical_data,
@@ -44,6 +53,10 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles the /start command."""
+    user = update.effective_user
+    if user:
+        record_activity(str(user.id), display_name=user.first_name or "", username=user.username or "", user_message="/start")
+
     welcome_text = (
         "👋 **Welcome to Trade with Bebo!**\n\n"
         "I'm **Bebo**, your personal AI Market Assistant.\n\n"
@@ -68,6 +81,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles the /help command."""
+    user = update.effective_user
+    if user:
+        record_activity(str(user.id), display_name=user.first_name or "", username=user.username or "", user_message="/help")
+
     help_text = (
         "📖 **Market Assistant Command Guide**\n\n"
         "**1. Full Multi-Agent Trade Analysis:**\n"
@@ -88,6 +105,10 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def model_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles the /model or status command."""
+    user = update.effective_user
+    if user:
+        record_activity(str(user.id), display_name=user.first_name or "", username=user.username or "", user_message="/model")
+
     status_text = (
         "🛡️ **System Architecture & Status**\n\n"
         "• **Status**: 🟢 Operational (24/7 Cloud)\n"
@@ -155,6 +176,10 @@ async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def price_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles /price <ticker>."""
+    user = update.effective_user
+    if user:
+        record_activity(str(user.id), display_name=user.first_name or "", username=user.username or "", user_message=f"/price {' '.join(context.args)}")
+
     if not context.args:
         await update.message.reply_text(
             "⚠️ Please specify a ticker symbol. Example: `/price NVDA` or `/price BTC`",
@@ -179,6 +204,10 @@ async def price_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def analyze_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles /analyze <ticker> — triggers full multi-agent pipeline."""
+    user = update.effective_user
+    if user:
+        record_activity(str(user.id), display_name=user.first_name or "", username=user.username or "", user_message=f"/analyze {' '.join(context.args)}")
+
     if not context.args:
         await update.message.reply_text(
             "⚠️ Please specify an asset to analyze. Example: `/analyze NVDA` or `/analyze BTC`",
@@ -203,6 +232,10 @@ async def risk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     Handles /risk <entry> <stop> <target> [balance] [risk_pct]
     Example: /risk 100 95 115 10000 1.0
     """
+    user = update.effective_user
+    if user:
+        record_activity(str(user.id), display_name=user.first_name or "", username=user.username or "", user_message=f"/risk {' '.join(context.args)}")
+
     if len(context.args) < 3:
         await update.message.reply_text(
             "⚠️ **Usage**: `/risk <entry> <stop_loss> <take_profit> [balance] [risk_pct]`\n"
@@ -234,6 +267,10 @@ async def risk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def news_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles /news <query>."""
+    user = update.effective_user
+    if user:
+        record_activity(str(user.id), display_name=user.first_name or "", username=user.username or "", user_message=f"/news {' '.join(context.args)}")
+
     if not context.args:
         await update.message.reply_text(
             "⚠️ Please specify a query. Example: `/news Fed interest rates`",
@@ -251,16 +288,6 @@ async def news_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(reply)
 
 
-from memory import (
-    save_chat_message,
-    get_recent_chat_history,
-    update_user_profile,
-    get_user_profile,
-    clear_user_history,
-    get_system_analytics,
-)
-
-
 # ---------------------------------------------------------
 # CONVERSATIONAL CHAT HANDLER (MULTI-AGENT PIPELINE)
 # ---------------------------------------------------------
@@ -274,14 +301,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     username = update.effective_user.username or ""
     first_name = update.effective_user.first_name or ""
 
-    # Update profile display name & username
-    update_user_profile(user_id, display_name=first_name, username=username)
+    # Record user profile & message to SQLite
+    record_activity(user_id, display_name=first_name, username=username, user_message=user_message)
 
     # Fetch persistent chat history from SQLite
     chat_history = get_recent_chat_history(user_id, limit=MAX_MEMORY_TURNS)
-
-    # Save user message to persistent DB
-    save_chat_message(user_id, "user", user_message)
 
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
 

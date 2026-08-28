@@ -103,37 +103,69 @@ def update_user_profile(
     trading_style: Optional[str] = None,
     notes: Optional[str] = None,
 ):
-    """Updates user preferences and profile details."""
+    """Upserts user profile and activity timestamp."""
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    updates = []
-    values = []
+    cursor.execute("SELECT user_id FROM user_profiles WHERE user_id = ?", (str(user_id),))
+    exists = cursor.fetchone()
 
-    if display_name:
-        updates.append("display_name = ?")
-        values.append(display_name)
-    if username:
-        updates.append("username = ?")
-        values.append(username)
-    if preferred_assets is not None:
-        updates.append("preferred_assets = ?")
-        values.append(json.dumps(preferred_assets))
-    if trading_style:
-        updates.append("trading_style = ?")
-        values.append(trading_style)
-    if notes:
-        updates.append("notes = ?")
-        values.append(notes)
+    if not exists:
+        cursor.execute(
+            """
+            INSERT INTO user_profiles (user_id, display_name, username, preferred_assets, trading_style, notes)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                str(user_id),
+                display_name or "Trader",
+                username or "",
+                json.dumps(preferred_assets or []),
+                trading_style or "Swing Trader",
+                notes or "",
+            ),
+        )
+    else:
+        updates = []
+        values = []
+        if display_name:
+            updates.append("display_name = ?")
+            values.append(display_name)
+        if username is not None:
+            updates.append("username = ?")
+            values.append(username)
+        if preferred_assets is not None:
+            updates.append("preferred_assets = ?")
+            values.append(json.dumps(preferred_assets))
+        if trading_style:
+            updates.append("trading_style = ?")
+            values.append(trading_style)
+        if notes:
+            updates.append("notes = ?")
+            values.append(notes)
 
-    if updates:
         updates.append("updated_at = CURRENT_TIMESTAMP")
         query = f"UPDATE user_profiles SET {', '.join(updates)} WHERE user_id = ?"
         values.append(str(user_id))
         cursor.execute(query, values)
-        conn.commit()
 
+    conn.commit()
     conn.close()
+
+
+def record_activity(
+    user_id: str,
+    display_name: str = "",
+    username: str = "",
+    user_message: str = "",
+    bot_response: str = "",
+):
+    """Records an interaction, ensuring the user profile is upserted and chat message is logged."""
+    update_user_profile(user_id, display_name=display_name, username=username)
+    if user_message:
+        save_chat_message(user_id, "user", user_message)
+    if bot_response:
+        save_chat_message(user_id, "assistant", bot_response)
 
 
 # ----------------------------------------------------------------------
