@@ -43,7 +43,8 @@ logger = logging.getLogger(__name__)
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles the /start command."""
     welcome_text = (
-        "👋 **Welcome to your AI Market Assistant!**\n\n"
+        "👋 **Welcome to Trade with Bebo!**\n\n"
+        "I'm **Bebo**, your personal AI Market Assistant.\n\n"
         "Get real-time market intelligence combining:\n"
         "📊 Technical Analysis\n"
         "📰 Live Market News\n"
@@ -53,7 +54,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• `/price GOLD` — Check live price and key levels\n"
         "• `/risk 100 95 115` — Calculate position risk & R:R\n"
         "• `/news Fed rate decision` — Get the latest market catalysts\n\n"
-        "💡 **Or simply ask a question naturally:**\n"
+        "💡 **Or simply ask me a question naturally:**\n"
         "\"*Should I buy BTC now?*\"\n"
         "\"*Why is Gold moving?*\"\n"
         "\"*Analyze NAS100 on 1H*\"\n\n"

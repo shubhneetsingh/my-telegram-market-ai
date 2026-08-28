@@ -1,6 +1,6 @@
-# 📈 Multi-Agent Telegram AI Market Assistant
+# 📈 Trade with Bebo — Multi-Agent AI Market Assistant
 
-A personal, institutional-grade Telegram AI market assistant powered by a **Multi-Agent Orchestrator**, **Deterministic Multi-Timeframe OHLCV Technicals**, and **Open-Source AI Models from NVIDIA NIM** (DeepSeek-R1, Nemotron, Llama 3.2).
+**Trade with Bebo** is an institutional-grade personal Telegram AI trading and market intelligence assistant powered by **Bebo**, a Multi-Agent AI System with **Deterministic Multi-Timeframe OHLCV Technicals** and **Adversarial Risk Governance**.
 
 ---
 
