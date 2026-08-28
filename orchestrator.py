@@ -205,49 +205,51 @@ class MultiAgentOrchestrator:
         self.ai = ai_engine
 
     async def route_intent(self, user_message: str) -> str:
-        """Fast heuristic + model intent router."""
+        """Fast, robust heuristic + model intent router."""
         lower = user_message.lower().strip()
 
-        # 1. Fast Conversational / Capability / Greeting Detection
-        capabilities = [
-            "what can you do", "what you can do", "what do you do", "who are you", 
-            "how can you help", "tell me about yourself", "what are your features",
-            "hello", "hi", "hey", "good morning", "good evening", "how are you", "help"
-        ]
-        if any(phrase in lower for phrase in capabilities):
-            return "GENERAL_CHAT"
-
-        # 2. Fast Command / Keyword Detection
+        # 1. Explicit Slash Commands
         if lower.startswith("/price"):
             return "PRICE_CHECK"
         if lower.startswith("/news"):
             return "NEWS_MACRO"
         if lower.startswith("/analyze"):
             return "TRADE_PLAN"
-        if any(w in lower for w in ["buy or sell", "should i buy", "should i sell", "enter long", "enter short", "trade setup", "trade plan"]):
-            return "TRADE_PLAN"
-        if any(w in lower for w in ["chart", "trend", "structure", "technical", "rsi", "ema", "support", "resistance"]):
-            return "TECHNICAL_ANALYSIS"
-        if any(w in lower for w in ["risk", "lot size", "position size", "stop loss distance"]):
+        if lower.startswith("/risk"):
             return "RISK_CALC"
-        if any(w in lower for w in ["fed", "fomc", "cpi", "inflation", "war", "rate cut", "earnings"]):
+        if lower in ["/start", "/help", "/clear", "/model"]:
+            return "GENERAL_CHAT"
+
+        # 2. System / Meta Questions (about the bot, data sources, broker, charts, capabilities)
+        meta_phrases = [
+            "what can you do", "what you can do", "what do you do", "who are you", 
+            "how can you help", "tell me about yourself", "what are your features",
+            "where do you get your data", "where do you get data", "where are you getting your data",
+            "where is your data from", "what is your source", "which broker", "what broker", 
+            "which chart", "what chart", "how do you work", "from where",
+            "hello", "hi", "hey", "good morning", "good evening", "how are you", "help"
+        ]
+        if any(phrase in lower for phrase in meta_phrases):
+            return "GENERAL_CHAT"
+
+        # 3. Check for specific tickers with analysis keywords
+        tickers = extract_potential_tickers(user_message)
+        if tickers:
+            if any(w in lower for w in ["buy", "sell", "long", "short", "trade plan", "trade setup", "should i", "analyze", "entry", "target", "stop loss"]):
+                return "TRADE_PLAN"
+            if any(w in lower for w in ["price", "quote", "rate", "how much is"]):
+                return "PRICE_CHECK"
+            if any(w in lower for w in ["news", "headline", "catalyst"]):
+                return "NEWS_MACRO"
+            if any(w in lower for w in ["rsi", "ema", "support", "resistance", "technical", "indicator"]):
+                return "TECHNICAL_ANALYSIS"
+
+        # 4. Explicit News keywords WITHOUT tickers
+        if any(w in lower for w in ["fed rate", "fomc meeting", "cpi report", "rate hike", "rate cut", "inflation report"]):
             return "NEWS_MACRO"
 
-        try:
-            model = resolve_agent_model("router")
-            response = await self.ai.client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": ROUTER_PROMPT},
-                    {"role": "user", "content": user_message},
-                ],
-                temperature=0.0,
-                max_tokens=30,
-            )
-            intent = response.choices[0].message.content.strip().upper()
-            return intent if intent in ["TECHNICAL_ANALYSIS", "TRADE_PLAN", "NEWS_MACRO", "PRICE_CHECK", "RISK_CALC", "GENERAL_CHAT"] else "GENERAL_CHAT"
-        except Exception:
-            return "GENERAL_CHAT"
+        # 5. Default to GENERAL_CHAT for any conversational questions or follow-ups
+        return "GENERAL_CHAT"
 
     async def run_full_pipeline(
         self,
@@ -286,8 +288,8 @@ class MultiAgentOrchestrator:
         if intent == "NEWS_MACRO":
             # Only do DuckDuckGo search if there is an explicit symbol or news query
             search_query = primary_symbol or user_message.replace("/news", "").strip()
-            if not search_query:
-                return "⚠️ Please specify a topic or asset for news search (e.g. `/news Fed rate decision` or `/news Gold`)."
+            if not search_query or len(search_query.split()) > 8:
+                return await self.ai.generate_response(chat_history)
 
             news_raw = await search_live_market_news(f"{search_query} financial market news today")
             if not news_raw:
@@ -303,11 +305,7 @@ class MultiAgentOrchestrator:
         # -------------------------------------------------------------
         # BRANCH 3: FULL MULTI-AGENT TRADE PLAN & CRITIC PIPELINE
         # -------------------------------------------------------------
-        if primary_symbol or intent in ["TECHNICAL_ANALYSIS", "TRADE_PLAN"]:
-            if not primary_symbol:
-                # If user asked for analysis without mentioning a symbol
-                return "📊 Which asset would you like me to analyze? (e.g., `/analyze NVDA`, `/analyze BTC`, or ask *\"Should I enter Gold long?\"*)"
-
+        if primary_symbol and intent in ["TECHNICAL_ANALYSIS", "TRADE_PLAN"]:
             symbol = primary_symbol
             data = await get_multi_timeframe_technical_data(symbol)
 
@@ -444,24 +442,39 @@ class MultiAgentOrchestrator:
                 "💡 *Drop any ticker (e.g. `/analyze GOLD` or `What's the trend on BTC?`) and let's break it down!*"
             )
 
-        return await self.ai.generate_response(chat_history)
+        # Ensure the current user message is always present in the history payload
+        effective_history = list(chat_history)
+        if not effective_history or effective_history[-1].get("content") != user_message:
+            effective_history.append({"role": "user", "content": user_message})
+
+        return await self.ai.generate_response(effective_history)
 
     async def _run_agent(self, system_prompt: str, user_content: str, role: str = "synthesizer") -> str:
-        """Invokes a specific agent role with its dedicated model configuration."""
+        """Invokes a specific agent role with dedicated model configuration and automatic fallback."""
         target_model = resolve_agent_model(role)
-        response = await self.ai.client.chat.completions.create(
-            model=target_model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_content},
-            ],
-            temperature=0.2,
-            max_tokens=900,
-        )
-        raw = response.choices[0].message.content or ""
-        if "<think>" in raw and "</think>" in raw:
-            raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
-        return raw.strip()
+        candidate_models = list(dict.fromkeys([target_model, "openai/gpt-oss-20b", "meta/llama-3.2-11b-vision-instruct"]))
+
+        for attempt_model in candidate_models:
+            try:
+                response = await self.ai.client.chat.completions.create(
+                    model=attempt_model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_content},
+                    ],
+                    temperature=0.2,
+                    max_tokens=900,
+                )
+                raw = response.choices[0].message.content or ""
+                if "<think>" in raw and "</think>" in raw:
+                    raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
+                if raw.strip():
+                    return raw.strip()
+            except Exception as e:
+                logger.warning(f"Agent role '{role}' failed on {attempt_model}: {e}. Retrying fallback...")
+                continue
+
+        return ""
 
 
 # Global singleton instance

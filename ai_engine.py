@@ -82,38 +82,32 @@ class MarketAIEngine:
 
         messages = [{"role": "system", "content": prompt_with_context}] + chat_history
         target_model = model or self.model
+        fallback_models = [target_model, "openai/gpt-oss-20b", "meta/llama-3.2-11b-vision-instruct"]
+        # Deduplicate while preserving order
+        candidate_models = list(dict.fromkeys(fallback_models))
 
-        try:
-            response = await self.client.chat.completions.create(
-                model=target_model,
-                messages=messages,
-                temperature=0.3,
-                max_tokens=1200,
-            )
-
-            raw_content = response.choices[0].message.content or ""
-            return clean_reasoning_output(raw_content)
-
-        except Exception as e:
-            error_msg = str(e)
-            logger.error(f"AI Generation Error ({AI_PROVIDER} / {target_model}): {error_msg}")
-
-            if "401" in error_msg or "invalid_api_key" in error_msg or "missing_key" in error_msg:
-                return (
-                    f"⚠️ **API Key Missing or Invalid**\n\n"
-                    f"Please check your `.env` file and set the correct API key for provider `{AI_PROVIDER}`.\n"
-                    f"For NVIDIA NIM, get a free key at [build.nvidia.com](https://build.nvidia.com)."
+        last_error = ""
+        for attempt_model in candidate_models:
+            try:
+                response = await self.client.chat.completions.create(
+                    model=attempt_model,
+                    messages=messages,
+                    temperature=0.3,
+                    max_tokens=1000,
                 )
-            elif "404" in error_msg or "model_not_found" in error_msg:
-                return (
-                    f"⚠️ **Model Not Found**\n\n"
-                    f"The model `{target_model}` was not found on `{AI_PROVIDER}`.\n"
-                    f"Please check your `.env` file model configuration."
-                )
-            elif "rate_limit" in error_msg.lower() or "429" in error_msg:
-                return "⏳ **Rate Limit Exceeded**: Please wait a few seconds before sending another message."
-            else:
-                return f"⚠️ An error occurred while communicating with the AI engine ({AI_PROVIDER}):\n`{error_msg}`"
+
+                raw_content = response.choices[0].message.content or ""
+                cleaned = clean_reasoning_output(raw_content)
+                if cleaned:
+                    return cleaned
+
+            except Exception as e:
+                last_error = str(e)
+                logger.warning(f"AI Generation failed on {attempt_model}: {last_error}. Retrying fallback...")
+                continue
+
+        logger.error(f"All AI candidates failed. Last error: {last_error}")
+        return f"⚠️ An error occurred while communicating with the AI engine ({AI_PROVIDER}):\n`{last_error}`"
 
 
 # Global singleton instance
