@@ -43,18 +43,16 @@ logger = logging.getLogger(__name__)
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles the /start command."""
     welcome_text = (
-        "👋 **Welcome to your Multi-Agent AI Market Assistant!**\n\n"
-        f"🤖 **Active Engine**: `{AI_PROVIDER.upper()}` (`{orchestrator.ai.model}`)\n"
-        "⚡ **Pipeline**: `Intent Router` ➔ `Quant OHLCV Engine` ➔ `News Agent` ➔ `Technical Agent` ➔ `Adversarial Critic` ➔ `Synthesizer`\n\n"
+        "👋 **Welcome to your AI Market Assistant!**\n\n"
+        "⚡ **Multi-Agent Intelligence**: `Quant Engine` + `Live News` + `Adversarial Risk Critic`\n\n"
         "**Key Commands:**\n"
-        "• `/analyze <symbol>` — Full multi-agent trade thesis & risk review (e.g. `/analyze NVDA`, `/analyze BTC`)\n"
-        "• `/price <symbol>` — Instant deterministic price & indicator metrics\n"
-        "• `/risk <entry> <stop> <tp>` — Exact position sizing & R:R calculator (e.g. `/risk 100 95 115`)\n"
-        "• `/news <query>` — Macro news catalyst & sentiment synthesis\n"
-        "• `/model` — View active AI configuration\n"
-        "• `/clear` — Reset memory\n"
-        "• `/help` — Full guide\n\n"
-        "💡 *Or simply ask any market question, trade setup, or chart pattern in natural language!*"
+        "• `/analyze <symbol>` — Full multi-timeframe trade setup & critic audit (e.g. `/analyze NVDA`, `/analyze BTC`)\n"
+        "• `/price <symbol>` — Instant live price & technical levels (e.g. `/price GOLD`)\n"
+        "• `/risk <entry> <stop> <tp>` — Position sizing & R:R calculator (e.g. `/risk 100 95 115`)\n"
+        "• `/news <topic>` — Live breaking market catalysts (e.g. `/news Fed rate decision`)\n"
+        "• `/clear` — Reset conversation memory\n"
+        "• `/help` — Full command guide\n\n"
+        "💡 *Or simply drop any question or ticker in plain chat and let's get to work!*"
     )
     await update.message.reply_text(welcome_text, parse_mode=ParseMode.MARKDOWN)
 
@@ -62,10 +60,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles the /help command."""
     help_text = (
-        "📖 **Multi-Agent Market Assistant Guide**\n\n"
+        "📖 **Market Assistant Command Guide**\n\n"
         "**1. Full Multi-Agent Trade Analysis:**\n"
         "• `/analyze NVDA` or ask: *\"Should I enter Gold long here?\"*\n"
-        "  ➔ Pulls 1D/1H OHLCV candles, checks EMAs/RSI/ATR, passes through the Technical Analyst and the Adversarial Critic.\n\n"
+        "  ➔ Pulls 1D/1H OHLCV candles, checks EMAs/RSI/ATR, passes through Technical Analyst and Adversarial Critic.\n\n"
         "**2. Fast Ticker Stats & Indicators:**\n"
         "• `/price BTC` or `/price EURUSD` or `/price SPX`\n\n"
         "**3. Deterministic Risk & Position Calculator:**\n"
@@ -80,15 +78,15 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def model_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles the /model command."""
+    """Handles the /model or status command."""
     status_text = (
-        "🤖 **Multi-Agent AI Configuration**\n\n"
-        f"• **Provider**: `{AI_PROVIDER}`\n"
-        f"• **Base Model**: `{orchestrator.ai.model}`\n"
-        f"• **Orchestration**: `Router` ➔ `News Agent` ➔ `Technical Agent` ➔ `Critic Agent` ➔ `Synthesizer`\n"
-        f"• **Deterministic Math**: `yfinance (1D/1H OHLCV)` + `Python Risk Engine`\n"
-        f"• **Memory Window**: `{MAX_MEMORY_TURNS}` turns\n\n"
-        "To switch models or providers, update `AI_PROVIDER` and `AI_MODEL` in `.env`."
+        "🛡️ **System Architecture & Status**\n\n"
+        "• **Status**: 🟢 Operational (24/7 Cloud)\n"
+        "• **Architecture**: Multi-Agent Neural Pipeline\n"
+        "• **Workflow**: `Router` ➔ `News Agent` ➔ `Technical Agent` ➔ `Adversarial Critic` ➔ `Synthesizer`\n"
+        "• **Quantitative Math**: Live Multi-Timeframe OHLCV (1D / 1H) + Indicator Confluence\n"
+        "• **Risk Engine**: Deterministic Position & Capital Protection Engine\n"
+        "• **Memory**: Persistent User Profile & Adaptive Learning"
     )
     await update.message.reply_text(status_text, parse_mode=ParseMode.MARKDOWN)
 

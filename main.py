@@ -46,9 +46,8 @@ web_app = Flask(__name__)
 def home():
     return (
         "<h1>🤖 Multi-Agent Telegram AI Market Assistant is ONLINE</h1>"
-        f"<p><strong>Active AI Provider:</strong> {AI_PROVIDER.upper()}</p>"
-        f"<p><strong>Active Model:</strong> {orchestrator.ai.model}</p>"
-        f"<p><strong>Status:</strong> 24/7 Polling Operational</p>"
+        "<p><strong>Architecture:</strong> Multi-Agent Neural Pipeline</p>"
+        "<p><strong>Status:</strong> 🟢 24/7 Polling Operational</p>"
         f"<p><strong>Server UTC Time:</strong> {datetime.now(timezone.utc).isoformat()}</p>"
     )
 
@@ -58,8 +57,7 @@ def health():
     return jsonify({
         "status": "healthy",
         "service": "Multi-Agent Telegram Market Assistant",
-        "provider": AI_PROVIDER,
-        "model": orchestrator.ai.model,
+        "operational": True,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }), 200
 
