@@ -122,45 +122,68 @@ async def model_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles the /stats command — displays real-time user metrics (Admin Only)."""
-    user_id = str(update.effective_user.id)
-    username = (update.effective_user.username or "").lower().lstrip("@")
+    """Handles the /stats and /users command — displays real-time user metrics."""
+    user = update.effective_user
+    user_id = str(user.id) if user else ""
+    username_raw = (user.username or "") if user else ""
+    clean_username = username_raw.lower().lstrip("@").strip()
+    first_name = (user.first_name or "") if user else ""
 
-    # If admins are configured in .env, restrict access to admins only
-    if ADMIN_USER_IDS or ADMIN_USERNAMES:
-        is_admin = (user_id in ADMIN_USER_IDS) or (username in ADMIN_USERNAMES)
-        if not is_admin:
-            await update.message.reply_text(
-                "🔒 **Access Restricted**: Analytics and user data are reserved for the bot administrator.",
-                parse_mode=ParseMode.MARKDOWN,
-            )
-            return
+    if user:
+        record_activity(user_id, display_name=first_name, username=username_raw, user_message="/stats")
+
+    # Check Admin authorization
+    is_admin = False
+    if not ADMIN_USER_IDS and not ADMIN_USERNAMES:
+        is_admin = True
+    else:
+        if clean_username in ADMIN_USERNAMES:
+            is_admin = True
+        if user_id in ADMIN_USER_IDS:
+            is_admin = True
 
     analytics = get_system_analytics()
-    total_users = analytics["total_users"]
-    total_messages = analytics["total_messages"]
-    active_24h = analytics["active_24h"]
-    recent_users = analytics["recent_users"]
+    total_users = analytics.get("total_users", 0)
+    total_messages = analytics.get("total_messages", 0)
+    active_24h = analytics.get("active_24h", 0)
+    recent_users = analytics.get("recent_users", [])
 
-    user_lines = []
-    for i, u in enumerate(recent_users[:10], 1):
-        name = u["display_name"] or "Trader"
-        uname = f"(@{u['username']})" if u["username"] else ""
-        msgs = u["msg_count"]
-        user_lines.append(f"{i}. **{name}** {uname} — `{msgs} msgs`")
+    if not is_admin:
+        report = (
+            "📊 **Trade with Bebo — System Status**\n\n"
+            f"👥 **Total Registered Traders**: `{total_users}`\n"
+            f"💬 **Total Queries Processed**: `{total_messages}`\n"
+            f"⚡ **Active Today**: `{active_24h}`\n\n"
+            f"👤 _Your ID: {user_id} | @{username_raw or 'no_username'}_\n"
+            "🔒 _Detailed user list is restricted to the administrator._"
+        )
+    else:
+        user_lines = []
+        for i, u in enumerate(recent_users[:15], 1):
+            name = (u.get("display_name") or "Trader").replace("_", " ").replace("*", "")
+            uname = u.get("username") or ""
+            uname_formatted = f"(@{uname.replace('_', ' ')})" if uname else ""
+            msgs = u.get("msg_count", 0)
+            user_lines.append(f"{i}. {name} {uname_formatted} — {msgs} msgs")
 
-    users_str = "\n".join(user_lines) if user_lines else "_No user records yet._"
+        users_str = "\n".join(user_lines) if user_lines else "No user records yet."
 
-    report = (
-        "📊 **Trade with Bebo — Live User Analytics**\n\n"
-        f"👥 **Total Registered Users**: `{total_users}`\n"
-        f"💬 **Total Messages Processed**: `{total_messages}`\n"
-        f"⚡ **Active Traders (Last 24H)**: `{active_24h}`\n\n"
-        "**Recent Active Users:**\n"
-        f"{users_str}\n\n"
-        "🌐 _Live Web Dashboard also accessible on your Render URL at `/stats`_"
-    )
-    await update.message.reply_text(report, parse_mode=ParseMode.MARKDOWN)
+        report = (
+            "📊 **Trade with Bebo — Live Admin Analytics**\n\n"
+            f"👥 **Total Registered Users**: `{total_users}`\n"
+            f"💬 **Total Messages Processed**: `{total_messages}`\n"
+            f"⚡ **Active Traders (Last 24H)**: `{active_24h}`\n\n"
+            "**Recent Active Users:**\n"
+            f"{users_str}\n\n"
+            "🌐 _Live Web Dashboard available on your Render URL at `/stats`_"
+        )
+
+    try:
+        await update.message.reply_text(report, parse_mode=ParseMode.MARKDOWN)
+    except Exception as e:
+        logger.warning(f"Markdown error in /stats: {e}, falling back to plain text")
+        safe_report = report.replace("**", "").replace("`", "").replace("_", "")
+        await update.message.reply_text(safe_report)
 
 
 async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):

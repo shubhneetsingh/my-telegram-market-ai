@@ -39,7 +39,7 @@ except ValueError:
 ADMIN_USER_IDS = [x.strip() for x in os.getenv("ADMIN_USER_IDS", "").split(",") if x.strip()]
 _env_admins = [x.strip().lstrip("@").lower() for x in os.getenv("ADMIN_USERNAMES", "").split(",") if x.strip()]
 # Built-in primary owner + environment overrides
-ADMIN_USERNAMES = list(dict.fromkeys(["shubhneetsingh"] + _env_admins))
+ADMIN_USERNAMES = list(dict.fromkeys(["shubhneetsingh", "shubhneet"] + _env_admins))
 
 
 def get_ai_client_config():
